@@ -2,6 +2,7 @@
 import (
     "github.com/vladimirkorzhenevskiy/gogen/pkg/application"
 	"github.com/vladimirkorzhenevskiy/gogen/pkg/log"
+	"go.opentelemetry.io/otel"
 
 	{{- $components := .Components }}
 	{{ range $components }}

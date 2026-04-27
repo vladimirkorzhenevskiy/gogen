@@ -94,7 +94,7 @@ func (a *App) Components() Components {
 func (a *App) Import(fqdn string) string {
 	component, ok := a.components[fqdn]
 	if !ok {
-		return ""
+		return path.Join(a.module, fqdn)
 	}
 
 	if Is[*Driver](component) {

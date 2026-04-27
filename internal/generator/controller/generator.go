@@ -6,11 +6,13 @@ import (
 )
 
 type Generator struct {
+	app        *model.App
 	controller *model.Controller
 }
 
-func New(controller *model.Controller) Generator {
+func New(app *model.App, controller *model.Controller) Generator {
 	return Generator{
+		app:        app,
 		controller: controller,
 	}
 }
@@ -18,7 +20,7 @@ func New(controller *model.Controller) Generator {
 func (g Generator) Generate() ([]model.File, error) {
 	switch g.controller.Protocol() {
 	case model.ProtocolOgen:
-		return ogen.New(g.controller).Generate()
+		return ogen.New(g.app, g.controller).Generate()
 	default:
 		return []model.File{}, nil
 	}

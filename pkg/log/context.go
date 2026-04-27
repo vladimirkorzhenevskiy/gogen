@@ -22,5 +22,10 @@ func Context(ctx context.Context, args ...any) context.Context {
 }
 
 func ContextArgs(ctx context.Context) []any {
-	return ctx.Value(contextKey{}).([]any)
+	args, ok := ctx.Value(contextKey{}).([]any)
+	if ok {
+		return args
+	}
+
+	return nil
 }

@@ -16,11 +16,13 @@ import (
 var errUnknownComponentType = errors.New("unknown component type")
 
 type Generator struct {
+	app       *model.App
 	component model.Component
 }
 
-func New(component model.Component) Generator {
+func New(app *model.App, component model.Component) Generator {
 	return Generator{
+		app:       app,
 		component: component,
 	}
 }
@@ -30,7 +32,7 @@ func (g Generator) Generate() ([]model.File, error) {
 	case *model.Driver:
 		return nop.New().Generate()
 	case *model.Controller:
-		return ogen.New(component).Generate()
+		return ogen.New(g.app, component).Generate()
 	case *model.Middleware:
 		return middleware.New(component).Generate()
 	case *model.UseCase:

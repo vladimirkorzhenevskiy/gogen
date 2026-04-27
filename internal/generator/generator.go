@@ -74,7 +74,7 @@ func Application(app *model.App) Generator {
 		}
 
 		for _, c := range app.Components() {
-			pipe = pipe.With(component.New(c))
+			pipe = pipe.With(component.New(app, c))
 		}
 
 		return pipe.Generate()

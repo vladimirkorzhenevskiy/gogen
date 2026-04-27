@@ -2,6 +2,7 @@ package log
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -18,6 +19,10 @@ func Any(key string, value any) Attr {
 
 func String(key, value string) Attr {
 	return slog.String(key, value)
+}
+
+func Stringer(key string, value fmt.Stringer) Attr {
+	return slog.String(key, value.String())
 }
 
 func Bytes(key string, value []byte) Attr {

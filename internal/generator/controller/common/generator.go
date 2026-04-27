@@ -29,14 +29,14 @@ func (g Generator) Generate() ([]model.File, error) {
 			Template:  "controller.go.tmpl",
 			Filepath:  g.controller.Path(),
 			Filename:  "controller.go",
-			Overwrite: true,
+			Overwrite: false,
 			Data:      g.controller,
 		},
 		template.Go{
 			Template:  "controller_gen.go.tmpl",
 			Filepath:  g.controller.Path(),
 			Filename:  "controller_gen.go",
-			Overwrite: false,
+			Overwrite: true,
 			Data:      g.controller,
 		},
 	)

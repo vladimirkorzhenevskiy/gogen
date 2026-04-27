@@ -10,9 +10,9 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/vladimirkorzhenevskiy/gogen/api/server"
 	"github.com/vladimirkorzhenevskiy/gogen/pkg/log"
+
+	"{{ $.App.Import "api/server" }}"
 )
 
 {{ template "config" . }}
@@ -73,8 +73,15 @@ func (c *Controller) Start(ctx context.Context) error {
 	}
 
 	go func() {
+		c.logger.Info("start serve HTTP",
+			log.Group("context", log.String("addr", c.server.Addr)),
+		)
+
 		if err := c.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			c.logger.Error("serve HTTP", log.Error(err))
+			c.logger.Error("failed to serve HTTP",
+				log.Group("context", log.String("addr", c.server.Addr)),
+				log.Error(err),
+			)
 		}
 	}()
 

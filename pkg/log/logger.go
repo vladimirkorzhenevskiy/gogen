@@ -91,5 +91,5 @@ type Handler struct {
 func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 	record.Add(ContextArgs(ctx)...)
 
-	return h.Handle(ctx, record)
+	return h.Handler.Handle(ctx, record)
 }
