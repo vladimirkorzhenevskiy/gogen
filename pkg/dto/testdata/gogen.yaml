@@ -1,0 +1,59 @@
+metadata:
+  name: "example"
+  module: "example"
+spec:
+  drivers:
+    redis:
+      kind: "redis"
+    postgres:
+      kind: "postgres"
+
+  controllers:
+    leadership:
+      server:
+        kind: "server"
+        protocol: "http"
+        dependencies:
+          getter: "usecase.leadership.get"
+      consumer:
+        kind: "consumer"
+        protocol: "kafka"
+        dependencies:
+          updater: "usecase.leadership.update"
+      scheduler:
+        kind: "scheduler"
+        protocol: "cron"
+        dependencies:
+          snapshotter: "usecase.leadership.snapshot"
+
+  usecases:
+    leadership:
+      get:
+        dependencies:
+          repository: "repository.leadership.postgres"
+          cache: "repository.leadership.redis"
+      update:
+        dependencies:
+          repository: "repository.leadership.postgres"
+          cache: "repository.leadership.redis"
+      snapshot:
+        dependencies:
+          repository: "repository.leadership.postgres"
+          cache: "repository.leadership.redis"
+
+  repositories:
+    leadership:
+      postgres:
+        dependencies:
+          postgres: "driver.postgres"
+        config:
+          timeout:
+            type: "duration"
+            default: "10s"
+      redis:
+        dependencies:
+          redis: "driver.redis"
+        config:
+          timeout:
+            type: "duration"
+            default: "10s"

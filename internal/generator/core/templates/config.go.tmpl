@@ -1,0 +1,9 @@
+{{ define "config" }}
+{{- if .Config }}
+type Config struct {
+{{- range $setting := .Config }}
+	{{ $setting.Name | ToCamel }} {{ $setting.Type.String | ToLower }} `envconfig:"{{ $setting.Name | ToScreamingSnake }}"{{ if $setting.Required }} required:"true"{{ end }}{{ if $setting.Default }} default:"{{ $setting.Default }}"{{ end }}`
+{{- end }}
+}
+{{- end }}
+{{ end }}

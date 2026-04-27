@@ -1,0 +1,11 @@
+{{ define "imports" }}
+import (
+    "github.com/vladimirkorzhenevskiy/gogen/pkg/application"
+	"github.com/vladimirkorzhenevskiy/gogen/pkg/log"
+
+	{{- $components := .Components }}
+	{{ range $components }}
+	{{ .Alias | ToLower }} "{{ $.App.Import .FQDN }}"
+	{{- end }}
+)
+{{- end }}

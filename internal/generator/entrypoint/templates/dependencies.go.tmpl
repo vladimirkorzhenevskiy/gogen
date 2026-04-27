@@ -1,0 +1,14 @@
+{{ define "dependencies" }}
+type Dependencies struct {
+    {{- range $layer := .App.Layers }}
+    {{- $components := $.Components.WithLayer $layer }}
+    {{- if $components }}
+    {{ $layer.Group | ToCamel }} struct {
+        {{- range $component := $components }}
+        {{ .FullName | ToCamel }} *{{ .Alias | ToLower }}.{{ .Layer.String | ToCamel }}
+        {{- end }}
+    }
+    {{- end }}
+    {{- end }}
+}
+{{- end }}

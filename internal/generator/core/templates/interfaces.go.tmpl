@@ -1,0 +1,7 @@
+{{ define "interfaces" }}
+{{ range $dependency := .Dependencies }}
+type {{ $dependency.Name | ToCamel }} interface {
+    // Your methods
+}
+{{ end }}
+{{ end }}

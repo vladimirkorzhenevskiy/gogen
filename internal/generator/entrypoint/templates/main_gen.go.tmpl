@@ -1,0 +1,46 @@
+package main
+{{ template "imports" . }}
+{{ template "config" . }}
+{{ template "dependencies" . }}
+
+func main() {
+    logger := log.New()
+    tracer := otel.GetTracerProvider().Tracer("{{ .App.Module }}")
+
+    var (
+        dependencies Dependencies
+        cfg  Config
+    )
+
+    {{- $components := .Components }}
+	{{ range $components }}
+	{
+	    {{- $component := . }}
+		{{ .Layer.String | ToLower }}, err := {{ .Alias | ToLower }}.New(
+			{{- if .Config }}cfg.{{ .Layer.Group | ToCamel }}.{{ .FullName | ToCamel }}{{ end -}}
+		)
+		if err != nil {
+			logger.Fatal("failed to create new {{ .Name | ToLower }} {{ .Layer.String | ToLower }}", log.Error(err))
+		}
+
+        {{ $component.Layer.String | ToLower }}.WithLogger(logger)
+        {{ $component.Layer.String | ToLower }}.WithTracer(tracer)
+		{{- range .Dependencies }}
+		{{- $dependency := $.App.Component .FQDN }}
+        {{ $component.Layer.String | ToLower }}.With{{ .Name | ToCamel }}(dependencies.{{ $dependency.Layer.Group | ToCamel }}.{{ $dependency.FullName | ToCamel }})
+	    {{- end }}
+
+		dependencies.{{ .Layer.Group | ToCamel }}.{{ .FullName | ToCamel }} = {{ .Layer.String | ToLower }}
+	}
+	{{- end }}
+
+	app := application.New(
+        {{- range $controller := .Components.Controllers }}
+		dependencies.Controllers.{{ $controller.FullName | ToCamel }},
+		{{- end }}
+	)
+
+	if err := app.Run(); err != nil {
+		logger.Fatal("failed to run application", log.Error(err))
+	}
+}

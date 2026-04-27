@@ -1,0 +1,14 @@
+{{ define "config" }}
+type Config struct {
+    {{- range $layer := .App.Layers }}
+    {{- $components := ($.Components.WithLayer $layer).WithConfig }}
+    {{- if $components }}
+    {{ $layer.Group | ToCamel }} struct {
+		{{- range $component := $components }}
+        {{ .FullName | ToCamel }} {{ .Alias | ToLower }}.Config `envconfig:"{{ .FullName | ToScreamingSnake }}"`
+		{{- end }}
+    } `envconfig:"{{ $layer.Group | ToScreamingSnake }}"`
+    {{- end }}
+    {{- end }}
+}
+{{- end }}
