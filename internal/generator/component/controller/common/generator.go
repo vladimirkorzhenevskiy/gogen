@@ -1,4 +1,4 @@
-package entrypoint
+package common
 
 import (
 	"embed"
@@ -11,24 +11,13 @@ import (
 //go:embed templates/*
 var templates embed.FS
 
-type TemplateContext struct {
-	App        *model.App
-	Entrypoint *model.Entrypoint
-	Components model.Components
-}
-
 type Generator struct {
-	app        *model.App
-	entrypoint *model.Entrypoint
+	controller *model.Controller
 }
 
-func New(
-	app *model.App,
-	entrypoint *model.Entrypoint,
-) Generator {
+func New(controller *model.Controller) Generator {
 	return Generator{
-		app:        app,
-		entrypoint: entrypoint,
+		controller: controller,
 	}
 }
 
@@ -37,15 +26,18 @@ func (g Generator) Generate() ([]model.File, error) {
 
 	pipe = pipe.With(
 		template.Go{
-			Template:  "main_gen.go.tmpl",
-			Filepath:  g.entrypoint.Path(),
-			Filename:  "main_gen.go",
+			Template:  "controller.go.tmpl",
+			Filepath:  g.controller.Path(),
+			Filename:  "controller.go",
+			Overwrite: false,
+			Data:      g.controller,
+		},
+		template.Go{
+			Template:  "controller_gen.go.tmpl",
+			Filepath:  g.controller.Path(),
+			Filename:  "controller_gen.go",
 			Overwrite: true,
-			Data: TemplateContext{
-				App:        g.app,
-				Entrypoint: g.entrypoint,
-				Components: g.entrypoint.Components(),
-			},
+			Data:      g.controller,
 		},
 	)
 

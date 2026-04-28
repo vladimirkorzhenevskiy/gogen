@@ -9,9 +9,14 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
-const gracefulShoutdownTimeout = time.Second * 15
+const (
+	startTimeout = time.Second * 15
+	stopTimeout  = time.Second * 15
+)
 
 type Module interface {
 	Start(ctx context.Context) error
@@ -26,14 +31,18 @@ type Hook struct {
 }
 
 type Application struct {
-	modules []Module
-	hooks   []Hook
-	started atomic.Bool
+	modules      []Module
+	hooks        []Hook
+	started      atomic.Bool
+	startTimeout time.Duration
+	stopTimeout  time.Duration
 }
 
 func New(modules ...Module) *Application {
 	return &Application{
-		modules: modules,
+		modules:      modules,
+		startTimeout: startTimeout,
+		stopTimeout:  stopTimeout,
 	}
 }
 
@@ -57,27 +66,46 @@ func (a *Application) WithHooks(hooks ...Hook) *Application {
 	return a
 }
 
+func (a *Application) WithStartTimeout(timeout time.Duration) *Application {
+	a.startTimeout = timeout
+
+	return a
+}
+
+func (a *Application) WithStopTimeout(timeout time.Duration) *Application {
+	a.stopTimeout = timeout
+
+	return a
+}
+
 func (a *Application) Run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	if err := a.Start(ctx); err != nil {
+	ctxStart, cancelStart := context.WithTimeout(ctx, startTimeout)
+	defer cancelStart()
+
+	if err := a.Start(ctxStart); err != nil {
 		return fmt.Errorf("failed to start application: %w", err)
 	}
 
 	<-ctx.Done()
 
-	ctx, cancel = context.WithTimeout(context.Background(), gracefulShoutdownTimeout)
-	defer cancel()
+	ctxStop, cancelStop := context.WithTimeout(context.Background(), stopTimeout)
+	defer cancelStop()
 
-	if err := a.Stop(ctx); err != nil {
-		return fmt.Errorf("failed to graceful shoutdown: %w", err)
+	if err := a.Stop(ctxStop); err != nil {
+		return fmt.Errorf("failed to graceful shutdown: %w", err)
 	}
 
 	return nil
 }
 
 func (a *Application) Start(ctx context.Context) error {
+	if !a.started.CompareAndSwap(false, true) {
+		return errors.New("application: already started") //nolint:err113
+	}
+
 	pipe := pipeline{
 		a.beforeStart,
 		a.start,
@@ -88,6 +116,10 @@ func (a *Application) Start(ctx context.Context) error {
 }
 
 func (a *Application) Stop(ctx context.Context) error {
+	if !a.started.CompareAndSwap(true, false) {
+		return errors.New("application: not started") //nolint:err113
+	}
+
 	pipe := pipeline{
 		a.beforeStop,
 		a.stop,
@@ -98,37 +130,15 @@ func (a *Application) Stop(ctx context.Context) error {
 }
 
 func (a *Application) start(ctx context.Context) error {
-	if !a.started.CompareAndSwap(false, true) {
-		return errors.New("application: already started") //nolint:err113
-	}
-
-	var wg sync.WaitGroup
-
-	done := make(chan error, len(a.modules))
+	errG, ctx := errgroup.WithContext(ctx)
 
 	for _, module := range a.modules {
-		wg.Add(1)
-
-		go func(module Module) {
-			defer wg.Done()
-
-			if err := module.Start(ctx); err != nil {
-				done <- err
-			}
-		}(module)
+		errG.Go(func() error {
+			return module.Start(ctx)
+		})
 	}
 
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	// Возвращаем первую ошибку, если она есть
-	if err := <-done; err != nil {
-		return err
-	}
-
-	return nil
+	return errG.Wait()
 }
 
 func (a *Application) stop(ctx context.Context) error {

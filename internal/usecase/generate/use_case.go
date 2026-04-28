@@ -22,8 +22,8 @@ func New(fs FS) *UseCase {
 	}
 }
 
-func (uc *UseCase) Execute(ctx context.Context, appDTO *dto.App) error {
-	app, err := appDTO.ToModel()
+func (uc *UseCase) Execute(ctx context.Context, inputDTO *dto.App) error {
+	app, err := inputDTO.ToModel()
 	if err != nil {
 		return err
 	}
@@ -32,17 +32,7 @@ func (uc *UseCase) Execute(ctx context.Context, appDTO *dto.App) error {
 }
 
 func (uc *UseCase) generate(ctx context.Context, app *model.App) error {
-	pipe := generator.Pipeline{
-		generator.Gitignore(app),
-		generator.GoMod(app),
-
-		generator.Docker(app),
-		generator.DockerCompose(app),
-
-		generator.Application(app),
-	}
-
-	files, err := pipe.Generate()
+	files, err := generator.App(app).Generate()
 	if err != nil {
 		return err
 	}

@@ -2,13 +2,17 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/vladimirkorzhenevskiy/gogen/pkg/log"
@@ -36,37 +40,87 @@ func (c Config) DSN() string {
 
 type Driver struct {
 	*pgxpool.Pool
+
+	metrics Metrics
+	logger  *log.Logger
+	tracer  trace.Tracer
 }
 
 func New(cfg Config) (*Driver, error) {
 	poolConfig, err := pgxpool.ParseConfig(cfg.DSN())
 	if err != nil {
-		return nil, fmt.Errorf("db: failed to parse dsn: %w", err)
+		return nil, fmt.Errorf("postgres: failed to parse dsn: %w", err)
+	}
+
+	driver := &Driver{
+		logger: log.Nop(),
+		tracer: otel.GetTracerProvider().Tracer("github.com/vladimirkorzhenevskiy/gogen"),
 	}
 
 	poolConfig.MaxConns = cfg.MaxConns
+	poolConfig.ConnConfig.Tracer = driver
 
 	const connectTimeout = 10 * time.Second
 
 	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, cfg.DSN())
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		return nil, fmt.Errorf("db: failed to open connect: %w", err)
+		return nil, fmt.Errorf("postgres: failed to open pgxpool connect: %w", err)
 	}
 
 	if err = pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("db: failed to ping connect: %w", err)
+		return nil, fmt.Errorf("postgres: failed to ping pgxpool connect: %w", err)
 	}
 
-	return &Driver{Pool: pool}, nil
+	driver.Pool = pool
+
+	return driver, nil
 }
 
-func (m *Driver) WithLogger(logger *log.Logger) {
-
+func (d *Driver) WithLogger(logger *log.Logger) {
+	d.logger = logger
 }
 
-func (m *Driver) WithTracer(tracer trace.Tracer) {
+func (d *Driver) WithTracer(tracer trace.Tracer) {
+	d.tracer = tracer
+}
 
+func (d *Driver) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	ctx, _ = d.tracer.Start(ctx, "postgres."+Op(ctx))
+
+	return withQueryStart(ctx, time.Now())
+}
+
+func (d *Driver) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
+	span := trace.SpanFromContext(ctx)
+	defer span.End()
+
+	op := Op(ctx)
+	start := queryStart(ctx)
+	duration := time.Since(start)
+
+	if data.Err != nil && !errors.Is(data.Err, pgx.ErrNoRows) {
+		d.logger.ErrorContext(ctx, "postgres: query failed",
+			log.String("operation", op),
+			log.Duration("duration", duration),
+			log.Error(data.Err),
+		)
+
+		span.RecordError(data.Err)
+	}
+
+	labels := prometheus.Labels{
+		"operation": op,
+		"status":    getStatus(data.Err),
+	}
+
+	if d.metrics.QueriesTotal != nil {
+		d.metrics.QueriesTotal.With(labels).Inc()
+	}
+
+	if d.metrics.QueriesDuration != nil {
+		d.metrics.QueriesDuration.With(labels).Observe(duration.Seconds())
+	}
 }

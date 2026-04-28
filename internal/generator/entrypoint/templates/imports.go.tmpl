@@ -1,5 +1,9 @@
 {{ define "imports" }}
 import (
+	"context"
+	"os"
+
+	"github.com/kelseyhightower/envconfig"
     "github.com/vladimirkorzhenevskiy/gogen/pkg/application"
 	"github.com/vladimirkorzhenevskiy/gogen/pkg/log"
 	"go.opentelemetry.io/otel"

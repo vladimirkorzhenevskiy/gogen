@@ -113,6 +113,8 @@ func (d Driver) Config() Config {
 
 func (d Driver) Dependencies() Dependencies { return nil }
 
+func (d Driver) Hooks() []Hook { return nil }
+
 type DriverKind string
 
 const (

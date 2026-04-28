@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/adapter"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/controller/ogen"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/middleware"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/nop"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/repository"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/usecase"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/adapter"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/controller"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/middleware"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/nop"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/repository"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/usecase"
 	"github.com/vladimirkorzhenevskiy/gogen/internal/model"
 )
 
@@ -32,7 +32,7 @@ func (g Generator) Generate() ([]model.File, error) {
 	case *model.Driver:
 		return nop.New().Generate()
 	case *model.Controller:
-		return ogen.New(g.app, component).Generate()
+		return controller.New(g.app, component).Generate()
 	case *model.Middleware:
 		return middleware.New(component).Generate()
 	case *model.UseCase:

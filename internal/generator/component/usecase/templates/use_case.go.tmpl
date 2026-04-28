@@ -1,0 +1,17 @@
+package {{ .Name | ToLower }}
+
+import (
+	"context"
+)
+
+{{ template "interfaces" . }}
+
+{{ range $hook := .Hooks }}
+func (uc *UseCase) {{ $hook }}(ctx context.Context) error {
+	return nil
+}
+
+{{ end }}
+func (uc *UseCase) Execute(ctx context.Context) error {
+	return nil
+}

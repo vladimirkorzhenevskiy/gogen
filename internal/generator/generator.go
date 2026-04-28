@@ -4,20 +4,15 @@ import (
 	"fmt"
 
 	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/component/nop"
 	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/entrypoint"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/gomod"
-	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/nop"
+	"github.com/vladimirkorzhenevskiy/gogen/internal/generator/root"
 	"github.com/vladimirkorzhenevskiy/gogen/internal/model"
+	"github.com/vladimirkorzhenevskiy/gogen/pkg/slicesutil"
 )
 
 type Generator interface {
 	Generate() ([]model.File, error)
-}
-
-type Func func() ([]model.File, error)
-
-func (f Func) Generate() ([]model.File, error) {
-	return f()
 }
 
 type Pipeline []Generator
@@ -41,42 +36,33 @@ func (p Pipeline) Generate() ([]model.File, error) {
 	return res, nil
 }
 
-func Gitignore(module *model.App) Generator {
+func App(app *model.App) Generator {
+	return Pipeline{
+		Root(app),
+		Code(app),
+		Build(app),
+	}
+}
+
+func Root(app *model.App) Generator {
+	return Pipeline{
+		root.Gitignore(app),
+		root.GolangCI(app),
+		root.GoMod(app),
+	}
+}
+
+func Code(app *model.App) Generator {
+	return Pipeline{
+		Pipeline(slicesutil.Map(app.Entrypoints(), func(item *model.Entrypoint) Generator {
+			return entrypoint.New(app, item)
+		})),
+		Pipeline(slicesutil.Map(app.Components(), func(item model.Component) Generator {
+			return component.New(app, item)
+		})),
+	}
+}
+
+func Build(app *model.App) Generator {
 	return nop.New()
-}
-
-func GoMod(app *model.App) Generator {
-	return gomod.New(app)
-}
-
-func GolangciLint(module *model.App) Generator {
-	return nop.New()
-}
-
-func Makefile(module *model.App) Generator {
-	return nop.New()
-}
-
-func Docker(module *model.App) Generator {
-	return nop.New()
-}
-
-func DockerCompose(module *model.App) Generator {
-	return nop.New()
-}
-
-func Application(app *model.App) Generator {
-	return Func(func() ([]model.File, error) {
-		var pipe Pipeline
-
-		for _, ep := range app.Entrypoints() {
-			pipe = pipe.With(entrypoint.New(app, ep))
-		}
-
-		for _, c := range app.Components() {
-			pipe = pipe.With(component.New(app, c))
-		}
-
-		return pipe.Generate()
-	})
 }

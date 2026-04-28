@@ -2,7 +2,6 @@ package log
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"os"
 )
@@ -21,7 +20,9 @@ func New(opts ...Option) *Logger {
 		opt(&options)
 	}
 
-	handler := newHandler(options.Writer, options.Level)
+	handler := slog.NewJSONHandler(options.Writer, &slog.HandlerOptions{
+		Level: options.Level,
+	})
 
 	return &Logger{logger: slog.New(handler)}
 }
@@ -74,22 +75,4 @@ func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any) {
 
 func (l *Logger) Handler() slog.Handler {
 	return l.logger.Handler()
-}
-
-func newHandler(writer io.Writer, level Level) *Handler {
-	return &Handler{
-		Handler: slog.NewJSONHandler(writer, &slog.HandlerOptions{
-			Level: level,
-		}),
-	}
-}
-
-type Handler struct {
-	slog.Handler
-}
-
-func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
-	record.Add(ContextArgs(ctx)...)
-
-	return h.Handler.Handle(ctx, record)
 }

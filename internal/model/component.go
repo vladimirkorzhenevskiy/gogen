@@ -26,6 +26,7 @@ type Component interface {
 	Alias() string
 	Config() Config
 	Dependencies() Dependencies
+	Hooks() []Hook
 }
 
 func Is[T any](value Component) bool {
@@ -123,9 +124,10 @@ type BaseComponent struct {
 	dependencies Dependencies
 	path         string
 	alias        string
+	hooks        map[Hook]struct{}
 }
 
-func baseComponent(name, namespace string, layer Layer, config Config, dependencies Dependencies) (*BaseComponent, error) {
+func baseComponent(name, namespace string, layer Layer, config Config, dependencies Dependencies, hooks []Hook) (*BaseComponent, error) {
 	if name == "" {
 		return nil, ErrUndefinedComponentName
 	}
@@ -151,7 +153,10 @@ func baseComponent(name, namespace string, layer Layer, config Config, dependenc
 		layer:        layer,
 		config:       config,
 		dependencies: dependencies,
+		hooks:        make(map[Hook]struct{}),
 	}
+
+	component = component.WithHooks(hooks...)
 
 	return component, nil
 }
@@ -195,12 +200,37 @@ func (b *BaseComponent) Dependencies() Dependencies {
 	return b.dependencies
 }
 
+func (b *BaseComponent) WithHooks(hooks ...Hook) *BaseComponent {
+	for _, hook := range hooks {
+		b.hooks[hook] = struct{}{}
+	}
+
+	return b
+}
+
+func (b *BaseComponent) Hooks() []Hook {
+	hooks := []Hook{
+		HookOnBeforeStart,
+		HookOnAfterStart,
+		HookOnBeforeStop,
+		HookOnAfterStop,
+	}
+
+	return slicesutil.Filter(hooks, b.HasHook)
+}
+
+func (b *BaseComponent) HasHook(hook Hook) bool {
+	_, ok := b.hooks[hook]
+
+	return ok
+}
+
 type Adapter struct {
 	*BaseComponent
 }
 
-func NewAdapter(name, namespace string, config Config, dependencies Dependencies) (*Adapter, error) {
-	base, err := baseComponent(name, namespace, AdapterLayer, config, dependencies)
+func NewAdapter(name, namespace string, config Config, dependencies Dependencies, hooks []Hook) (*Adapter, error) {
+	base, err := baseComponent(name, namespace, AdapterLayer, config, dependencies, hooks)
 	if err != nil {
 		return nil, err
 	}
@@ -214,8 +244,8 @@ type Middleware struct {
 	*BaseComponent
 }
 
-func NewMiddleware(name, namespace string, config Config, dependencies Dependencies) (*Middleware, error) {
-	base, err := baseComponent(name, namespace, MiddlewareLayer, config, dependencies)
+func NewMiddleware(name, namespace string, config Config, dependencies Dependencies, hooks []Hook) (*Middleware, error) {
+	base, err := baseComponent(name, namespace, MiddlewareLayer, config, dependencies, hooks)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +259,8 @@ type Repository struct {
 	*BaseComponent
 }
 
-func NewRepository(name, namespace string, config Config, dependencies Dependencies) (*Repository, error) {
-	base, err := baseComponent(name, namespace, RepositoryLayer, config, dependencies)
+func NewRepository(name, namespace string, config Config, dependencies Dependencies, hooks []Hook) (*Repository, error) {
+	base, err := baseComponent(name, namespace, RepositoryLayer, config, dependencies, hooks)
 	if err != nil {
 		return nil, err
 	}
@@ -244,8 +274,8 @@ type UseCase struct {
 	*BaseComponent
 }
 
-func NewUseCase(name, namespace string, config Config, dependencies Dependencies) (*UseCase, error) {
-	base, err := baseComponent(name, namespace, UseCaseLayer, config, dependencies)
+func NewUseCase(name, namespace string, config Config, dependencies Dependencies, hooks []Hook) (*UseCase, error) {
+	base, err := baseComponent(name, namespace, UseCaseLayer, config, dependencies, hooks)
 	if err != nil {
 		return nil, err
 	}

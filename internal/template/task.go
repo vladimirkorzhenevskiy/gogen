@@ -29,17 +29,12 @@ func (t Go) Execute(tpl *template.Template) (model.File, error) {
 		return model.File{}, err
 	}
 
-	// Специфичная логика только для Go: форматирование
-	formatted, err := format.Source(buf.Bytes())
+	content, err := format.Source(buf.Bytes())
 	if err != nil {
 		return model.File{}, fmt.Errorf("format error: %w", err)
 	}
 
-	return model.NewFile(
-		path.Join(t.Filepath, t.Filename),
-		formatted,
-		t.Overwrite,
-	), nil
+	return model.NewFile(path.Join(t.Filepath, t.Filename), content, t.Overwrite), nil
 }
 
 type Text struct {
@@ -57,9 +52,5 @@ func (t Text) Execute(tpl *template.Template) (model.File, error) {
 		return model.File{}, err
 	}
 
-	return model.NewFile(
-		path.Join(t.Filepath, t.Filename),
-		buf.Bytes(),
-		t.Overwrite,
-	), nil
+	return model.NewFile(path.Join(t.Filepath, t.Filename), buf.Bytes(), t.Overwrite), nil
 }

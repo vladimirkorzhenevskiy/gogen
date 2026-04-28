@@ -13,12 +13,30 @@ type Controller struct {
 	spec     string
 }
 
+func NewController(
+	name,
+	namespace string,
+	config Config,
+	dependencies Dependencies,
+	hooks []Hook,
+) (*Controller, error) {
+	base, err := baseComponent(name, namespace, ControllerLayer, config, dependencies, hooks)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Controller{
+		BaseComponent: base,
+	}, nil
+}
+
 func NewOgenController(
 	name,
 	namespace,
 	spec string,
 	config Config,
 	dependencies Dependencies,
+	hooks []Hook,
 ) (*Controller, error) {
 	if spec == "" {
 		return nil, ErrUndefinedControllerSpec
@@ -29,7 +47,7 @@ func NewOgenController(
 		Must(NewSetting("PORT", SettingTypeUint16, false, "8080")),
 	}
 
-	base, err := baseComponent(name, namespace, ControllerLayer, ogenConfig.Merge(config), dependencies)
+	base, err := baseComponent(name, namespace, ControllerLayer, ogenConfig.Merge(config), dependencies, hooks)
 	if err != nil {
 		return nil, err
 	}

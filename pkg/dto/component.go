@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"fmt"
+	"errors"
 	"maps"
 	"slices"
 
@@ -14,6 +14,7 @@ type Component struct {
 	Namespace    string       `yaml:"namespace"`
 	Config       Config       `yaml:"config"       validate:"unique,dive"`
 	Dependencies Dependencies `yaml:"dependencies" validate:"unique,dive"`
+	Hooks        Hooks        `yaml:"hooks"        validate:"unique"`
 }
 
 func (c *Component) SetName(name string) {
@@ -24,12 +25,8 @@ func (c *Component) SetNamespace(namespace string) {
 	c.Namespace = namespace
 }
 
-func (c *Component) SetConfig(config Config) {
-	c.Config = config
-}
-
-func (c *Component) SetDependencies(dependencies Dependencies) {
-	c.Dependencies = dependencies
+func (c *Component) ToModel() (model.Component, error) {
+	return nil, errors.New("unsupported component type")
 }
 
 type component interface {
@@ -73,7 +70,7 @@ func (c Components[T]) ToModel() (model.Components, error) {
 type Controller struct {
 	Component `yaml:",inline"`
 
-	Protocol string `yaml:"protocol" validate:"required"`
+	Protocol string `yaml:"protocol"`
 	Spec     string `yaml:"spec"`
 }
 
@@ -88,6 +85,11 @@ func (c *Controller) ToModel() (model.Component, error) {
 		return nil, err
 	}
 
+	hooks, err := c.Hooks.ToModel()
+	if err != nil {
+		return nil, err
+	}
+
 	switch model.Protocol(c.Protocol) {
 	case model.ProtocolOgen:
 		return model.NewOgenController(
@@ -96,9 +98,16 @@ func (c *Controller) ToModel() (model.Component, error) {
 			c.Spec,
 			config,
 			dependencies,
+			hooks,
 		)
 	default:
-		return nil, fmt.Errorf("unsupported protocol: %s", c.Protocol)
+		return model.NewController(
+			c.Name,
+			c.Namespace,
+			config,
+			dependencies,
+			hooks,
+		)
 	}
 }
 
@@ -119,11 +128,17 @@ func (m *Middleware) ToModel() (model.Component, error) {
 		return nil, err
 	}
 
+	hooks, err := m.Hooks.ToModel()
+	if err != nil {
+		return nil, err
+	}
+
 	return model.NewMiddleware(
 		m.Name,
 		m.Namespace,
 		config,
 		dependencies,
+		hooks,
 	)
 }
 
@@ -144,11 +159,17 @@ func (u *UseCase) ToModel() (model.Component, error) {
 		return nil, err
 	}
 
+	hooks, err := u.Hooks.ToModel()
+	if err != nil {
+		return nil, err
+	}
+
 	return model.NewUseCase(
 		u.Name,
 		u.Namespace,
 		config,
 		dependencies,
+		hooks,
 	)
 }
 
@@ -169,11 +190,17 @@ func (a *Adapter) ToModel() (model.Component, error) {
 		return nil, err
 	}
 
+	hooks, err := a.Hooks.ToModel()
+	if err != nil {
+		return nil, err
+	}
+
 	return model.NewAdapter(
 		a.Name,
 		a.Namespace,
 		config,
 		dependencies,
+		hooks,
 	)
 }
 
@@ -194,11 +221,17 @@ func (r *Repository) ToModel() (model.Component, error) {
 		return nil, err
 	}
 
+	hooks, err := r.Hooks.ToModel()
+	if err != nil {
+		return nil, err
+	}
+
 	return model.NewRepository(
 		r.Name,
 		r.Namespace,
 		config,
 		dependencies,
+		hooks,
 	)
 }
 

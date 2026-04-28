@@ -34,13 +34,20 @@ func NewPipeline(filesystems ...fs.FS) *Pipeline {
 
 func (p *Pipeline) With(tasks ...Task) *Pipeline {
 	p.tasks = append(p.tasks, tasks...)
+
 	return p
 }
 
-func (p *Pipeline) WithFunctions(functions template.FuncMap) *Pipeline {
+func (p *Pipeline) WithFuncs(functions template.FuncMap) *Pipeline {
 	for k, v := range functions {
 		p.functions[k] = v
 	}
+
+	return p
+}
+
+func (p *Pipeline) WithFileSystems(filesystems ...fs.FS) *Pipeline {
+	p.filesystems = append(p.filesystems, filesystems...)
 
 	return p
 }
@@ -69,4 +76,8 @@ func (p *Pipeline) Execute() ([]model.File, error) {
 	}
 
 	return files, nil
+}
+
+func (p *Pipeline) Generate() ([]model.File, error) {
+	return p.Execute()
 }
